@@ -54,8 +54,8 @@ dkms.conf
 # VSCode folder
 .vscode
 
-# ZSTD stuff
-.zstd
+# ZSTD files
+*.zstd
 
 # DB files
 *.db
