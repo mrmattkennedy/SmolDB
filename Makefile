@@ -19,9 +19,9 @@ $(POC_TARGET): $(POC_OBJ)
 	$(CC) -o $@ $^ $(LDFLAGS)
 
 %.o: %.c
-	$(CC) -c -o $@ $< $(CFLAGS)
+	$(CC) -c -g -o $@ $< $(CFLAGS)
 
 clean:
-	rm -f $(OBJ) $(TARGET) $(POC_OBJ) $(POC_TARGET)
+	rm -f $(OBJ) $(TARGET) $(POC_OBJ) $(POC_TARGET) *.zstd
 
 poc: $(POC_TARGET)
