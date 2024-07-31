@@ -1,8 +1,6 @@
 #include <zstd.h>
 #include <zdict.h>
 #include <stdio.h>
-#include <assert.h>
-#include <time.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
@@ -44,6 +42,9 @@ int create_train_dictionary(struct Record *data) {
 // Compress array using dictionary
 int compress_using_dictionary(struct Record *data, size_t dataSize)
 {
+    const char* versionString = ZSTD_versionString();
+    printf("Using zstandard version: %s\n", versionString);
+
     // Load the dictionary from a file
     FILE* dict_file = fopen("dictionary.zstd", "rb");
     if (!dict_file) {
@@ -58,6 +59,23 @@ int compress_using_dictionary(struct Record *data, size_t dataSize)
         return 1;
     }
 
+    // Load the dictionary into the compression context
+    ZSTD_CDict* cdict = ZSTD_createCDict(dict_buffer, dict_size, 1); // 1 for default compression level
+    free(dict_buffer);
+    if (!cdict) {
+        fprintf(stderr, "Failed to create compression dictionary\n");
+        return 1;
+    }
+
+    // Allocate buffer for compressed data
+    size_t cBuffSize = ZSTD_compressBound(dataSize);
+    void* cData = malloc(cBuffSize);
+    if (!cData) {
+        fprintf(stderr, "Failed to allocate memory for compressed data\n");
+        ZSTD_freeCDict(cdict);
+        return 1;
+    }
+
     // Create a compression context
     ZSTD_CCtx* cctx = ZSTD_createCCtx();
     if (!cctx) {
@@ -66,31 +84,19 @@ int compress_using_dictionary(struct Record *data, size_t dataSize)
         return 1;
     }
 
-    // Load the dictionary into the compression context
-    ZSTD_CDict* cdict = ZSTD_createCDict(dict_buffer, dict_size, 1); // 1 for default compression level
-    free(dict_buffer);
-    if (!cdict) {
-        fprintf(stderr, "Failed to create compression dictionary\n");
-        ZSTD_freeCCtx(cctx);
-        return 1;
-    }
-
-    // Allocate buffer for compressed data
-    size_t cBuffSize = ZSTD_compressBound(dataSize);
-    void* compressed_data = malloc(cBuffSize);
-    printf("%zu\t%zu\n", cBuffSize, dataSize);
-    if (!compressed_data) {
-        fprintf(stderr, "Failed to allocate memory for compressed data\n");
-        ZSTD_freeCDict(cdict);
+    // Set the number of threads (workers) to use
+    size_t result = ZSTD_CCtx_setParameter(cctx, ZSTD_c_nbWorkers, 2);
+    if (ZSTD_isError(result)) {
+        fprintf(stderr, "Failed to set number of threads: %s\n", ZSTD_getErrorName(result));
         ZSTD_freeCCtx(cctx);
         return 1;
     }
 
     // Compress the data using the dictionary
-    size_t const cSize = ZSTD_compress_usingCDict(cctx, compressed_data, cBuffSize, data, dataSize, cdict);
+    size_t const cSize = ZSTD_compress_usingCDict(cctx, cData, cBuffSize, data, dataSize, cdict);
     if (ZSTD_isError(cSize)) {
         fprintf(stderr, "Compression failed: %s\n", ZSTD_getErrorName(cSize));
-        free(compressed_data);
+        free(cData);
         ZSTD_freeCDict(cdict);
         ZSTD_freeCCtx(cctx);
         return 1;
@@ -100,21 +106,21 @@ int compress_using_dictionary(struct Record *data, size_t dataSize)
     FILE* cFile = fopen("compressed.zstd", "wb");
     if (cFile == NULL) {
         fprintf(stderr, "Failed to open compression file for writing\n");
-        free(compressed_data);
+        free(cData);
         ZSTD_freeCDict(cdict);
         ZSTD_freeCCtx(cctx);
         return 1;
     }
-    fwrite(compressed_data, 1, cSize, cFile);
+    fwrite(cData, 1, cSize, cFile);
     fclose(dict_file);
 
-    // Wi
-    printf("%6u -> %7u, %.2f%%\n", dataSize, (unsigned)cSize, (cSize * 100.0) / dataSize);
+    // Write out the original size, new size, and what % thaat is
+    printf("Compressing (dict):\t%6u -> %7u, %.2f%%\n", dataSize, (unsigned)cSize, (cSize * 100.0) / dataSize);
 
     // Clean up
-    free(compressed_data);
+    free(cData);
     ZSTD_freeCDict(cdict);
     ZSTD_freeCCtx(cctx);
-
+    
     return 0;
 }

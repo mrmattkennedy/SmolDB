@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -I./zstd/lib -I./zstd/lib/common -I./zstd/lib/compress -I./zstd/lib/decompress -I./zstd/lib/dictBuilder
-LDFLAGS = -L./zstd/lib -lzstd
+CFLAGS = -Wall -Wextra -O2
+LDFLAGS = -lzstd
 
 SRC = $(wildcard src/*.c)
 OBJ = $(SRC:.c=.o)

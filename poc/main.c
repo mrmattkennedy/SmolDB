@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "compress_using_dict.h"
+#include "compress_simple.h"
 
 
 void die(const char *message)
@@ -80,14 +81,17 @@ void create_random_data(struct Record *array)
     }
 
     // Print item 5000 to see
-    printf("%d, %s, %s\n", array[5000].id, array[5000].name, array[5000].email);
+    // printf("%d, %s, %s\n", array[5000].id, array[5000].name, array[5000].email);
 }
 
 
 int main() {
     // Create struct of a pseudo database with MAX_ROWS rows
-    struct Record train_data[MAX_ROWS];
-    struct Record test_data[MAX_ROWS];
+    // struct *Record train_data[MAX_ROWS];
+    // struct *Record test_data[MAX_ROWS];
+    size_t data_size = MAX_ROWS * sizeof(struct Record);
+    struct Record *train_data = (struct Record*)malloc(data_size);
+    struct Record *test_data = (struct Record*)malloc(data_size);
 
     // Fill with random data
     create_random_data(train_data);
@@ -95,7 +99,12 @@ int main() {
 
     // Compress with dictionary
     create_train_dictionary(train_data);
-    compress_using_dictionary(test_data, sizeof(test_data));
+    free(train_data);
 
+    compress_using_dictionary(test_data, data_size);
+    // Compress normal
+    compress_simple(test_data, data_size);
+    
+    free(test_data);
     return 0;
 }
