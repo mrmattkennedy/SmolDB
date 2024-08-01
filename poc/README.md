@@ -2,7 +2,6 @@
 This folder shows a proof of concept for using zstandard to compress records in a database on the fly, instead of entire files.
 To build the C version of this, you need to install ZSTD. You can also install with multithreading support manually by cloning the repo and running the following:
 ```
-cd c
 cd zstd
 make lib-mt 
 sudo make install MT=1
