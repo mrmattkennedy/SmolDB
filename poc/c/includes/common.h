@@ -2,7 +2,7 @@
 #define COMPRESS_COMMON
 
 #define MAX_DATA 64
-#define MAX_ROWS 100000
+#define MAX_ROWS 1000000
 #define DICT_SIZE 110000
 
 // Create a struct that mimics a record in a db

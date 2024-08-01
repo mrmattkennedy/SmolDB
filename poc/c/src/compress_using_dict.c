@@ -40,11 +40,8 @@ int create_train_dictionary(struct Record *data) {
 }
 
 // Compress array using dictionary
-int compress_using_dictionary(struct Record *data, size_t dataSize)
+int compress_using_dictionary(struct Record *data, size_t dataSize, short nThreads, short cLevel)
 {
-    const char* versionString = ZSTD_versionString();
-    printf("Using zstandard version: %s\n", versionString);
-
     // Load the dictionary from a file
     FILE* dict_file = fopen("dictionary.zstd", "rb");
     if (!dict_file) {
@@ -60,7 +57,7 @@ int compress_using_dictionary(struct Record *data, size_t dataSize)
     }
 
     // Load the dictionary into the compression context
-    ZSTD_CDict* cdict = ZSTD_createCDict(dict_buffer, dict_size, 1); // 1 for default compression level
+    ZSTD_CDict* cdict = ZSTD_createCDict(dict_buffer, dict_size, cLevel); // 1 for default compression level
     free(dict_buffer);
     if (!cdict) {
         fprintf(stderr, "Failed to create compression dictionary\n");
@@ -85,11 +82,13 @@ int compress_using_dictionary(struct Record *data, size_t dataSize)
     }
 
     // Set the number of threads (workers) to use
-    size_t result = ZSTD_CCtx_setParameter(cctx, ZSTD_c_nbWorkers, 2);
-    if (ZSTD_isError(result)) {
-        fprintf(stderr, "Failed to set number of threads: %s\n", ZSTD_getErrorName(result));
-        ZSTD_freeCCtx(cctx);
-        return 1;
+    if (nThreads > 0) {
+        size_t result = ZSTD_CCtx_setParameter(cctx, ZSTD_c_nbWorkers, nThreads);
+        if (ZSTD_isError(result)) {
+            fprintf(stderr, "Failed to set number of threads: %s\n", ZSTD_getErrorName(result));
+            ZSTD_freeCCtx(cctx);
+            // Don't return, just continue with single threaded support
+        }
     }
 
     // Compress the data using the dictionary
@@ -115,7 +114,7 @@ int compress_using_dictionary(struct Record *data, size_t dataSize)
     fclose(dict_file);
 
     // Write out the original size, new size, and what % thaat is
-    printf("Compressing (dict):\t%6u -> %7u, %.2f%%\n", dataSize, (unsigned)cSize, (cSize * 100.0) / dataSize);
+    printf("Compressing (dict):\t%6u -> %7u, %.2f%%\n", (unsigned int)dataSize, (unsigned)cSize, (cSize * 100.0) / dataSize);
 
     // Clean up
     free(cData);
